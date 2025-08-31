@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced WebGIS Example with Custom Fullscreen</title>
+    <!-- Include Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Include Leaflet.Draw CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <!-- Include Leaflet.MiniMap CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-minimap/3.6.1/Control.MiniMap.min.css" />
+    <!-- Include Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Include Leaflet.Draw JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <!-- Include Leaflet.MiniMap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-minimap/3.6.1/Control.MiniMap.min.js"></script>
+    <style>
+        #map {
+            height: 850px; /* Set the height of the map container */
+            width: 100%;
+        }
+        .leaflet-control-fullscreen a {
+            background: #fff url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMCAwaDI0djI0SDB6IiBmaWxsPSJub25lIi8+PHBhdGggZD0iTTcgNTRIMTB2NUg3ek05IDVINXYzTDMgNXYySDR2NEgwdjNoNXYtNEg2VjloM3Y1aDN2LTNoLTV6bTEwIDZ2LTFoLTN2LTNoLTV2M2gtM3YtNUg1djRoM3YzaDV2LTNoM3YzaDV2LTNoLTN2LTN6Ii8+PC9zdmc+') no-repeat center; /* Fullscreen icon */
+            background-size: 20px 20px;
+        }
+        .leaflet-control-fullscreen.leaflet-fullscreen-on a {
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMCAwaDI0djI0SDB6IiBmaWxsPSJub25lIi8+PHBhdGggZD0iTTUgMTRIMTB2NUg1ek0xMyA5aDN2LTNoLTV2M2gtM3YtNUgwdjNoNXYtNEg2VjhoM3Y1aDN2LTN6bTEwIDZ2LTFoLTN2LTNoLTV2M2gtM3YtNUg1djRoM3YzaDV2LTNoM3YzaDV2LTNoLTN2LTN6Ii8+PC9zdmc+'); /* Exit fullscreen icon */
+        }
+        #controls {
+            margin-bottom: 10px;
+        }
+        #search {
+            width: 200px;
+            padding: 5px;
+        }
+        button {
+            padding: 5px 10px;
+        }
+        #geojsonFile {
+            margin-left: 10px;
+        }
+        .leaflet-control-mouseposition {
+            background: white;
+            padding: 5px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <input id="search" type="text" placeholder="Search location (e.g., Paris)">
+        <button id="searchBtn">Search</button>
+        <button id="locateBtn">Locate Me</button>
+        <input id="geojsonFile" type="file" accept=".geojson,.json">
+        <button id="loadGeoJSON">Load GeoJSON</button>
+    </div>
+    
+    <!-- Map container -->
+    <div id="map"></div>
+    
+    <script>
+        // Custom Fullscreen Control
+        L.Control.Fullscreen = L.Control.extend({
+            onAdd: function(map) {
+                var container = L.DomUtil.create('div', 'leaflet-control-fullscreen leaflet-bar leaflet-control');
+                this.link = L.DomUtil.create('a', 'leaflet-control-fullscreen-button leaflet-bar-part', container);
+                this.link.href = '#';
+                this._map = map;
+                this._isFullscreen = false;
+
+                L.DomEvent.on(this.link, 'click', this._click, this);
+                return container;
+            },
+            _click: function(e) {
+                L.DomEvent.stopPropagation(e);
+                L.DomEvent.preventDefault(e);
+                this._toggleFullscreen();
+            },
+            _toggleFullscreen: function() {
+                var container = this._map.getContainer();
+                if (this._isFullscreen) {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.mozCancelFullScreen) {
+                        document.mozCancelFullScreen();
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    } else if (document.msExitFullscreen) {
+                        document.msExitFullscreen();
+                    }
+                    this._isFullscreen = false;
+                    this.link.classList.remove('leaflet-fullscreen-on');
+                } else {
+                    if (container.requestFullscreen) {
+                        container.requestFullscreen();
+                    } else if (container.mozRequestFullScreen) {
+                        container.mozRequestFullScreen();
+                    } else if (container.webkitRequestFullscreen) {
+                        container.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+                    } else if (container.msRequestFullscreen) {
+                        container.msRequestFullscreen();
+                    }
+                    this._isFullscreen = true;
+                    this.link.classList.add('leaflet-fullscreen-on');
+                }
+            }
+        });
+
+        L.control.fullscreen = function(opts) {
+            return new L.Control.Fullscreen(opts);
+        };
+
+        // Custom Mouse Position Control
+        L.Control.MousePosition = L.Control.extend({
+            options: {
+                position: 'bottomleft',
+                separator: ' : ',
+                emptyString: 'Unavailable',
+                lngFirst: false,
+                numDigits: 5,
+                lngFormatter: undefined,
+                latFormatter: undefined,
+                prefix: ""
+            },
+
+            onAdd: function (map) {
+                this._container = L.DomUtil.create('div', 'leaflet-control-mouseposition');
+                L.DomEvent.disableClickPropagation(this._container);
+                map.on('mousemove', this._onMouseMove, this);
+                this._container.innerHTML = this.options.emptyString;
+                return this._container;
+            },
+
+            onRemove: function (map) {
+                map.off('mousemove', this._onMouseMove)
+            },
+
+            _onMouseMove: function (e) {
+                var lng = this.options.lngFormatter ? this.options.lngFormatter(e.latlng.lng) : L.Util.formatNum(e.latlng.lng, this.options.numDigits);
+                var lat = this.options.latFormatter ? this.options.latFormatter(e.latlng.lat) : L.Util.formatNum(e.latlng.lat, this.options.numDigits);
+                var value = this.options.lngFirst ? lng + this.options.separator + lat : lat + this.options.separator + lng;
+                var prefixAndValue = this.options.prefix + ' ' + value;
+                this._container.innerHTML = prefixAndValue;
+            }
+        });
+
+        L.Map.mergeOptions({
+            positionControl: false
+        });
+
+        L.Map.addInitHook(function () {
+            if (this.options.positionControl) {
+                this.positionControl = new L.Control.MousePosition();
+                this.addControl(this.positionControl);
+            }
+        });
+
+        L.control.mousePosition = function (options) {
+            return new L.Control.MousePosition(options);
+        };
+
+        // Initialize the map
+        var map = L.map('map', { positionControl: true }).setView([39.9042, 116.4074], 13); // Center on Beijing, zoom level 13
+        
+        // Add fullscreen control
+        L.control.fullscreen({ position: 'topright' }).addTo(map);
+
+        // Handle fullscreen change
+        var handleFullscreenChange = function() {
+            map.invalidateSize();
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+        // Define basemaps
+        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+        var terrain = L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}{r}.png', {
+            attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, under <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>. Data by <a href="http://openstreetmap.org">OpenStreetMap</a>, under <a href="http://www.openstreetmap.org/copyright">ODbL</a>.'
+        });
+        var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        });
+
+        // Add default basemap
+        osm.addTo(map);
+
+        // Minimap
+        var miniOsm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: ''
+        });
+        var minimap = new L.Control.MiniMap(miniOsm, {
+            toggleDisplay: true,
+            minimized: false,
+            position: 'bottomright'
+        }).addTo(map);
+
+        // Drawing tools
+        var drawnItems = L.featureGroup().addTo(map);
+        var drawControl = new L.Control.Draw({
+            position: 'topleft',
+            draw: {
+                polygon: {
+                    shapeOptions: {
+                        color: '#f357a1',
+                        weight: 3
+                    }
+                },
+                polyline: true,
+                circle: true,
+                rectangle: true,
+                marker: true,
+                circlemarker: false
+            },
+            edit: {
+                featureGroup: drawnItems
+            }
+        });
+        map.addControl(drawControl);
+
+        map.on('draw:created', function (e) {
+            var type = e.layerType,
+                layer = e.layer;
+            drawnItems.addLayer(layer);
+        });
+
+        // Layer control
+        var baseLayers = {
+            "OpenStreetMap": osm,
+            "Terrain": terrain,
+            "Satellite": satellite
+        };
+
+        L.control.layers(baseLayers).addTo(map);
+
+        // Search functionality using Nominatim
+        document.getElementById('searchBtn').addEventListener('click', function() {
+            var query = document.getElementById('search').value;
+            if (!query) return;
+            fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(query))
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        var lat = parseFloat(data[0].lat);
+                        var lon = parseFloat(data[0].lon);
+                        map.setView([lat, lon], 13);
+                        L.marker([lat, lon]).addTo(map).bindPopup(data[0].display_name).openPopup();
+                    } else {
+                        alert('Location not found');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error searching location');
+                });
+        });
+
+        // User geolocation
+        document.getElementById('locateBtn').addEventListener('click', function() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    var lat = position.coords.latitude;
+                    var lon = position.coords.longitude;
+                    map.setView([lat, lon], 13);
+                    L.marker([lat, lon]).addTo(map).bindPopup('You are here!').openPopup();
+                }, function(error) {
+                    alert('Error getting location: ' + error.message);
+                });
+            } else {
+                alert('Geolocation is not supported by this browser.');
+            }
+        });
+
+        // Load GeoJSON from file
+        document.getElementById('loadGeoJSON').addEventListener('click', function() {
+            var fileInput = document.getElementById('geojsonFile');
+            if (fileInput.files.length === 0) {
+                alert('Please select a GeoJSON file.');
+                return;
+            }
+            var file = fileInput.files[0];
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var data = JSON.parse(e.target.result);
+                    var geoJsonLayer = L.geoJSON(data, {
+                        onEachFeature: function (feature, layer) {
+                            if (feature.properties) {
+                                layer.bindPopup(Object.keys(feature.properties).map(function(k) {
+                                    return k + ": " + feature.properties[k];
+                                }).join("<br />"));
+                            }
+                        }
+                    }).addTo(map);
+                    map.fitBounds(geoJsonLayer.getBounds());
+                } catch (err) {
+                    alert('Error loading GeoJSON: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        });
+    </script>
+</body>
+</html>

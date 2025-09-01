@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced WebGIS Example with Custom Fullscreen</title>
+    <title>WebGIS Example</title>
     <!-- Include Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <!-- Include Leaflet.Draw CSS -->
@@ -16,17 +16,30 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
     <!-- Include Leaflet.MiniMap JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-minimap/3.6.1/Control.MiniMap.min.js"></script>
+    <!-- Include turf.min JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <style>
         #map {
             height: 850px; /* Set the height of the map container */
             width: 100%;
         }
         .leaflet-control-fullscreen a {
-            background: #fff url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMCAwaDI0djI0SDB6IiBmaWxsPSJub25lIi8+PHBhdGggZD0iTTcgNTRIMTB2NUg3ek05IDVINXYzTDMgNXYySDR2NEgwdjNoNXYtNEg2VjloM3Y1aDN2LTNoLTV6bTEwIDZ2LTFoLTN2LTNoLTV2M2gtM3YtNUg1djRoM3YzaDV2LTNoM3YzaDV2LTNoLTN2LTN6Ii8+PC9zdmc+') no-repeat center; /* Fullscreen icon */
-            background-size: 20px 20px;
+            position: relative;
+            background-color: #fff;
+            border-radius: 4px;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.2);
         }
-        .leaflet-control-fullscreen.leaflet-fullscreen-on a {
-            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMCAwaDI0djI0SDB6IiBmaWxsPSJub25lIi8+PHBhdGggZD0iTTUgMTRIMTB2NUg1ek0xMyA5aDN2LTNoLTV2M2gtM3YtNUgwdjNoNXYtNEg2VjhoM3Y1aDN2LTN6bTEwIDZ2LTFoLTN2LTNoLTV2M2gtM3YtNUg1djRoM3YzaDV2LTNoM3YzaDV2LTNoLTN2LTN6Ii8+PC9zdmc+'); /* Exit fullscreen icon */
+
+        .leaflet-control-fullscreen a::before {
+            content: "⛶";
+            font-size: 30px;
+            line-height: 1;
+            color: #8e8e8e;
         }
         #controls {
             margin-bottom: 10px;
@@ -207,8 +220,9 @@
             draw: {
                 polygon: {
                     shapeOptions: {
-                        color: '#f357a1',
-                        weight: 3
+                        color: '#3388ff',
+                        weight: 2,
+                        opacity: 0.5
                     }
                 },
                 polyline: true,
@@ -227,6 +241,24 @@
             var type = e.layerType,
                 layer = e.layer;
             drawnItems.addLayer(layer);
+            var message = '';
+            var geojson = layer.toGeoJSON();
+            if (type === 'polyline') {
+                var length = turf.length(geojson, {units: 'kilometers'});
+                message = length.toFixed(2) + ' 千米';
+            } else if (type === 'polygon' || type === 'rectangle') {
+                var area = turf.area(geojson);
+                message = ((area / 1000000) * 1500).toFixed(2) + ' 亩';
+            } else if (type === 'circle') {
+                var radius = layer.getRadius();
+                var area = Math.PI * radius * radius;
+                message = ((area / 1000000) * 1500).toFixed(2) + ' 亩';
+            } else if (type === 'marker') {
+                message = layer.getLatLng();
+            }
+            if (message) {
+                layer.bindPopup(message).openPopup();
+            }
         });
 
         // Layer control
